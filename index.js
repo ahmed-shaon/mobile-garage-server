@@ -59,10 +59,19 @@ async function run(){
             next();
         }
 
+
         app.post('/users', async (req, res) => {
             const user = req.body;
             console.log(user);
             const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
+        //------------delete user----
+        app.delete('/users', verifyJWT, verifyAdmin, async(req, res) =>{
+            const id = req.query.id;
+            const query = {_id: ObjectId(id)};
+            const result = await usersCollection.deleteOne(query);
             res.send(result);
         })
 
