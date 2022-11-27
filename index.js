@@ -1,4 +1,5 @@
 const express = require('express');
+const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -6,7 +7,6 @@ const e = require('express');
 require("dotenv").config();
 
 
-const app = express();
 const port = process.env.PORT || 5000;
 
 
@@ -38,6 +38,7 @@ async function run(){
     try{
         const usersCollection = client.db("mobileGarage").collection("users");
         const productCollection = client.db('mobileGarage').collection('products');
+        const categoryCollection = client.db('mobileGarage').collection('categoryOption');
 
 
         async function verifyAdmin(req, res, next){
@@ -59,12 +60,19 @@ async function run(){
             next();
         }
 
-
-        app.post('/users', async (req, res) => {
-            const user = req.body;
-            console.log(user);
-            const result = await usersCollection.insertOne(user);
-            res.send(result);
+        //get category
+        app.get('/category', async(req, res) => {
+            const query = {};
+            const categories = await categoryCollection.find(query).toArray();
+            res.send(categories);
+        })
+        
+        //get products
+        app.get('/category/:id', async(req, res) => {
+            const id = req.params.id;
+            const query = {categoryId:id};
+            const products = await productCollection.find(query).toArray();
+            res.send(products);
         })
 
         //------------delete user----
@@ -100,7 +108,6 @@ async function run(){
         app.get('/products', verifyJWT, verifySeller, async(req, res) => {
 
             const email = req.query.email;
-            console.log(email);
             const query = {email:email};
             const products = await productCollection.find(query).toArray();
             res.send(products);
@@ -128,6 +135,14 @@ async function run(){
             const query = {email};
             const user = await usersCollection.findOne(query);
             res.send({isSeller: user?.type === 'seller'})
+        })
+
+        //------------user
+        app.post('/users', async(req, res) => {
+            const user = req.body;
+            console.log(user);
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
         })
 
 
