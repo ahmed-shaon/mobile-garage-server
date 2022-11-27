@@ -122,7 +122,15 @@ async function run(){
             res.send(result);
         })
 
-        //---------post order---
+        //---------order---
+
+        app.get('/order',verifyJWT, async(req, res) => {
+            const email = req.query.email;
+            const query = {email};
+            const orders = await ordersCollection.find(query).toArray();
+            res.send(orders);
+        })
+
         app.post('/order', async(req, res) =>{
             const order = req.body;
             const filter = {_id:ObjectId(order.productId)}
