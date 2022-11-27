@@ -39,6 +39,7 @@ async function run(){
         const usersCollection = client.db("mobileGarage").collection("users");
         const productCollection = client.db('mobileGarage').collection('products');
         const categoryCollection = client.db('mobileGarage').collection('categoryOption');
+        const ordersCollection = client.db('mobileGarage').collection('orders');
 
 
         async function verifyAdmin(req, res, next){
@@ -118,6 +119,21 @@ async function run(){
             const id = req.query.id;
             const query = {_id: ObjectId(id)};
             const result = await productCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        //---------post order---
+        app.post('/order', async(req, res) =>{
+            const order = req.body;
+            const filter = {_id:ObjectId(order.productId)}
+            const option = {upsert:true};
+            const doc = {
+                $set:{
+                    status:"sold"
+                }
+            }
+            const updateProduct = await productCollection.updateOne(filter, doc, option)
+            const result = await ordersCollection.insertOne(order);
             res.send(result);
         })
 
