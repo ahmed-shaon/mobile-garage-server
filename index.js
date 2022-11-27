@@ -40,6 +40,7 @@ async function run(){
         const productCollection = client.db('mobileGarage').collection('products');
         const categoryCollection = client.db('mobileGarage').collection('categoryOption');
         const ordersCollection = client.db('mobileGarage').collection('orders');
+        const advertiseCollection = client.db('mobileGarage').collection('advertise');
 
 
         async function verifyAdmin(req, res, next){
@@ -122,7 +123,7 @@ async function run(){
             res.send(result);
         })
 
-        //---------order---
+        //---------order start---
 
         app.get('/order',verifyJWT, async(req, res) => {
             const email = req.query.email;
@@ -131,19 +132,45 @@ async function run(){
             res.send(orders);
         })
 
-        app.post('/order', async(req, res) =>{
+        app.post('/order', verifyJWT, async(req, res) =>{
             const order = req.body;
-            const filter = {_id:ObjectId(order.productId)}
-            const option = {upsert:true};
-            const doc = {
-                $set:{
-                    status:"sold"
-                }
-            }
-            const updateProduct = await productCollection.updateOne(filter, doc, option)
             const result = await ordersCollection.insertOne(order);
             res.send(result);
         })
+
+        app.delete('/order', async(req, res) => {
+            const id= req.query.id;
+            console.log(id);
+            const query = {_id: ObjectId(id)};
+            const result = await ordersCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        //--------------order end------------
+
+        //----------advertise start------------
+        app.get('/advertise', async(req, res) => {
+            const query = {};
+            const products = await advertiseCollection.find(query).toArray();
+            res.send(products);
+        })
+
+        app.post('/advertise', verifyJWt,async(req, res) =>{
+            const id = req.query.id;
+            const advertiseProduct = req.body;
+            const filter = {advertiseId:id};
+            const product = await advertiseCollection.findOne(filter);
+            if(!product){
+                const result = await advertiseCollection.insertOne(advertiseProduct);
+                res.send(result)
+            }
+            else{
+
+                res.send({message:"Product is already advertised"});
+            }
+        })
+
+        //----------advertise end-------------
 
 
         //isAdmin
