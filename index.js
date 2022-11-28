@@ -145,8 +145,17 @@ async function run() {
 
         app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body;
-            const result = await ordersCollection.insertOne(order);
-            res.send(result);
+            const query = {productId:order.productId}
+            const products = await ordersCollection.find(query).toArray();
+            const check = products.find(product => product.email === order.email && product.productId === order.productId);
+            console.log(check);
+            if(!check){
+                const result = await ordersCollection.insertOne(order);
+                res.send(result);
+            }
+            else{
+                res.send({message:'Already Booked'});
+            }
         })
 
         app.delete('/order', async (req, res) => {
@@ -164,7 +173,8 @@ async function run() {
         app.get('/advertise', async (req, res) => {
             const query = {};
             const products = await advertiseCollection.find(query).toArray();
-            res.send(products);
+            const newProducts = products.filter(product => product.status !== 'sold');
+            res.send(newProducts);
         })
 
         app.post('/advertise', verifyJWT, async (req, res) => {
@@ -194,10 +204,10 @@ async function run() {
 
         app.post('/wishlist', verifyJWT, async (req, res) => {
             const product = req.body;
-            console.log(product);
             const filter = { productId: product.productId };
-            const wishProdcut = await wishListCollection.findOne(filter);
-            if (!wishProdcut) {
+            const wishProdcuts = await wishListCollection.find(filter).toArray();
+            const isWish = wishProdcuts.find(wishProdcut => (wishProdcut.email === product.email) && (wishProdcut.productId === product.productId))
+            if (!isWish ) {
                 const result = await wishListCollection.insertOne(product);
                 res.send(result);
             }
@@ -292,7 +302,16 @@ async function run() {
         app.post('/users', async (req, res) => {
             const user = req.body;
             console.log(user);
-            const result = await usersCollection.insertOne(user);
+            const filter = {email:user.email};
+            const option = {upsert:true};
+            const updateDoc = {
+                $set:{
+                    name:user.name,
+                    email:user.email,
+                    type:user.type
+                }
+            }
+            const result = await usersCollection.updateOne(filter, updateDoc, option);
             res.send(result);
         })
 
