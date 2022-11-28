@@ -6,6 +6,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const e = require('express');
 require("dotenv").config();
 
+const stripe = require("stripe")(process.env.STRIPE_SECRETKEY);
 
 const port = process.env.PORT || 5000;
 
@@ -42,6 +43,7 @@ async function run() {
         const ordersCollection = client.db('mobileGarage').collection('orders');
         const advertiseCollection = client.db('mobileGarage').collection('advertise');
         const wishListCollection = client.db('mobileGarage').collection('wishLish');
+        const paymentCollection = client.db('mobileGarage').collection('payment');
 
 
         async function verifyAdmin(req, res, next) {
@@ -140,6 +142,7 @@ async function run() {
             res.send(orders);
         })
 
+
         app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body;
             const result = await ordersCollection.insertOne(order);
@@ -153,6 +156,7 @@ async function run() {
             const result = await ordersCollection.deleteOne(query);
             res.send(result);
         })
+
 
         //--------------order end------------
 
@@ -210,6 +214,63 @@ async function run() {
         })
 
         //--------------wish list end--------------
+
+        //---------------payment ---------------------
+        
+        app.get('/payment/:id', async(req, res) => {
+            const id = req.params.id;
+            const filter = {_id: ObjectId(id)};
+            const order = await ordersCollection.findOne(filter);
+            res.send(order);
+        })
+
+        app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+            const order = req.body;
+            const amount = order.price;          
+            //Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+              amount: amount * 100,
+              currency: "usd",
+              "payment_method_types": [
+                "card"
+              ]
+            });
+          
+            res.send({
+              clientSecret: paymentIntent.client_secret,
+            });
+          });
+
+          app.post('/payment', verifyJWT, async (req, res) => {
+            const payment = req.body;
+            const productId = payment.productId;
+            const orderId = payment.orderId;
+            const query = {_id: ObjectId(productId)} ;
+            const filter = {_id: ObjectId(orderId)};
+            const filter2 = {advertiseId:productId};
+            const option = {upsert: true};
+            const doc1 = {
+                $set:{
+                    status:'paid'
+                }
+            }
+            const doc2 = {
+                $set:{
+                    status:'sold'
+                }
+            }
+            const updateProduct = await productCollection.updateOne(query, doc2, option);
+            const updateOrder = await ordersCollection.updateOne(filter, doc1, option);
+            const advertiseProduct = await advertiseCollection.findOne(filter2);
+            if(advertiseProduct){
+                const updateAvertise = await advertiseCollection.updateOne(filter2, doc2, option)
+            }
+            const result = await paymentCollection.insertOne(payment);
+            res.send(result);
+
+          })
+
+        //----------payment end-------------------
 
 
         //isAdmin
