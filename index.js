@@ -104,6 +104,13 @@ async function run() {
         //-------------product API-------------
         app.post('/products', verifyJWT, verifySeller, async (req, res) => {
             const product = req.body;
+            const email = product.email;
+            const filter = {email};
+            const user = await usersCollection.findOne(filter);
+            if(user?.userStatus === 'verified'){
+                product.userStatus = 'verified';
+            }
+            console.log(product);
             const result = await productCollection.insertOne(product);
             res.send(result);
         })
@@ -174,6 +181,13 @@ async function run() {
         //----------advertise end-------------
 
         //--------------wish list start--------------
+        app.get('/wishlist', verifyJWT, async(req, res) => {
+            const email = req.query.email;
+            const filter = {email};
+            const wishProducts = await wishListCollection.find(filter).toArray();
+            res.send(wishProducts);
+        })
+
         app.post('/wishlist', verifyJWT, async (req, res) => {
             const product = req.body;
             console.log(product);
@@ -186,6 +200,13 @@ async function run() {
             else{
                 res.send({message:'Already Added'});
             }
+        })
+
+        app.delete('/wishlist/:id',verifyJWT, async(req, res) => {
+            const id= req.params.id;
+            const filter = {_id: ObjectId(id)};
+            const result = await wishListCollection.deleteOne(filter);
+            res.send(result);
         })
 
         //--------------wish list end--------------
@@ -206,11 +227,26 @@ async function run() {
             res.send({ isSeller: user?.type === 'seller' })
         })
 
-        //------------user
+        //------------user start---------------
         app.post('/users', async (req, res) => {
             const user = req.body;
             console.log(user);
             const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
+        app.put('/users/:email', async(req, res) => {
+            const email = req.params.email;
+            console.log(email);
+            const query = {email};
+            const option = {upsert:true};
+            const updatedDoc = {
+                $set:{
+                    userStatus:'verified'
+                }
+            }
+            const userUpdateInfo = await usersCollection.updateOne(query, updatedDoc, option);
+            const result = await productCollection.updateMany(query, updatedDoc);
             res.send(result);
         })
 
